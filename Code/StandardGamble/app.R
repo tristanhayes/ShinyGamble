@@ -18,6 +18,8 @@ ui <- fluidPage(
   titlePanel("Standard Gamble Interview"),
   sidebarLayout(
     sidebarPanel(
+      numericInput("age", "Your Age", value = 25, min = 18, max = 80),
+      selectInput("gender", "Your Gender", choices = c("Male", "Female", "Other or Prefer Not to Answer")),
       rank_list(
         text = "Imagine you have well controlled diabetes. You take insulin and check your blood sugar regularly, but otherwise lead a life free of complications. Now we want to see how you would compare this quality of life with that of life living with three complications related to diabetes. Rank the conditions with worst quality of life at the top (the closest to dying) and best quality of life (perfect health with controlled diabetes) at the bottom. ",
         labels = c("Diabetic Neuropathy: Complication of diabetes that results in nerve pain. Most commonly, this causes a burning and stinging sensation in your hands and feet. This may eventually progress to the point where you can’t feel things well with your fingers or more commonly your feet. Loss of sensation in your feet can lead to diabetic foot infections from minor injuries you don’t feel.", 
@@ -28,45 +30,45 @@ ui <- fluidPage(
       actionButton("start", "Start Interview")
     ),
     mainPanel(    titlePanel("Instructions"),
-      fluidRow(
-      column(12, textOutput("gambleExplanation"))
-    ),fluidRow(
-      column(12, br())
-    ),
-      tabsetPanel(id = "gambleTabs",
-                  tabPanel("Condition 1", value = "cond1",
-                           br(),
-                           actionButton("cond1Choice1", "This condition is bad. I would risk the cure."),
-                           actionButton("cond1Choice2", "I am indifferent."),
-                           actionButton("cond1Choice3", "That's too high of a risk of dieing. I would rather live with the condition."),
-                           br(),
-                           br(),
-                           textOutput("cond1Desc"),
-                           br(),
-                           plotlyOutput("cond1PieChart")),
-                  tabPanel("Condition 2", value = "cond2",
-                           br(),
-                           actionButton("cond2Choice1", "This condition is bad. I would risk the cure."),
-                           actionButton("cond2Choice2", "I am indifferent."),
-                           actionButton("cond2Choice3", "That's too high of a risk of dieing. I would rather live with the condition."),
-                           br(),
-                           br(),
-                           textOutput("cond2Desc"),
-                           br(),
-                           br(),
-                           plotlyOutput("cond2PieChart")),
-                  tabPanel("Condition 3", value = "cond3",
-                           br(),
-                           actionButton("cond3Choice1", "This condition is bad. I would risk the cure."),
-                           actionButton("cond3Choice2", "I am indifferent."),
-                           actionButton("cond3Choice3", "That's too high of a risk of dieing. I would rather live with the condition."),
-                           br(),
-                           br(),
-                           textOutput("cond3Desc"),
-                           br(),
-                           br(),
-                           plotlyOutput("cond3PieChart"))
-      )
+                  fluidRow(
+                    column(12, textOutput("gambleExplanation"))
+                  ),fluidRow(
+                    column(12, br())
+                  ),
+                  tabsetPanel(id = "gambleTabs",
+                              tabPanel("Condition 1", value = "cond1",
+                                       br(),
+                                       actionButton("cond1Choice1", "This condition is bad. I would risk the cure."),
+                                       actionButton("cond1Choice2", "I am indifferent."),
+                                       actionButton("cond1Choice3", "That's too high of a risk of death. I would rather live with the condition."),
+                                       br(),
+                                       br(),
+                                       textOutput("cond1Desc"),
+                                       br(),
+                                       plotlyOutput("cond1PieChart")),
+                              tabPanel("Condition 2", value = "cond2",
+                                       br(),
+                                       actionButton("cond2Choice1", "This condition is bad. I would risk the cure."),
+                                       actionButton("cond2Choice2", "I am indifferent."),
+                                       actionButton("cond2Choice3", "That's too high of a risk of death. I would rather live with the condition."),
+                                       br(),
+                                       br(),
+                                       textOutput("cond2Desc"),
+                                       br(),
+                                       br(),
+                                       plotlyOutput("cond2PieChart")),
+                              tabPanel("Condition 3", value = "cond3",
+                                       br(),
+                                       actionButton("cond3Choice1", "This condition is bad. I would risk the cure."),
+                                       actionButton("cond3Choice2", "I am indifferent."),
+                                       actionButton("cond3Choice3", "That's too high of a risk of death. I would rather live with the condition."),
+                                       br(),
+                                       br(),
+                                       textOutput("cond3Desc"),
+                                       br(),
+                                       br(),
+                                       plotlyOutput("cond3PieChart"))
+                  )
     )
   )
 )
@@ -75,7 +77,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # Render the explanation text
   output$gambleExplanation <- renderText({
-    "Here we want to evaluate your perception of the quality of life under the below conditions using a method called the Standard Gamble. You have below a scenario where you can choose between living with a health condition for the rest of your life or taking a 'gamble' with a risky treatment where you have a chance of being cured or dieing from the treatment. The higher risk you are willing to take to be cured tells us how low the quality of life with that condition is. When you select I am indifferent, then we move to the enxt condition. You cannot take a higher risk of death than the prior condition."
+    "Here we want to evaluate your perception of the quality of life under the below conditions using a method called the Standard Gamble. It is a scenario where you can choose between living with a health condition for the rest of your life or taking a 'gamble' with a risky treatment where you have a chance of being cured or could die from the treatment. The higher risk you are willing to take to be cured tells us how poorly you value the quality of life with that condition. When you select I am indifferent, then we move to the enxt condition. You cannot take a higher risk of death than the prior condition."
   })
   # Initialize reactive values
   gambleStates <- reactiveValues(
@@ -85,6 +87,11 @@ server <- function(input, output, session) {
     stepSize = list(cond1 = 10, cond2 = 10, cond3 = 10),
     maxRisk = list(cond1 = 100, cond2 = 100, cond3 = 100)  # Initialize maximum risks
   )
+  
+  # Reactive values to store user responses and calculated life expectancy
+  lifeExpectancyTable <- read.csv("SSA2020LifeTable.csv")
+  userResponses <- reactiveValues(age = NULL, gender = NULL, lifeExpectancy = NULL)
+  
   
   observeEvent(input$start, {
     gambleStates$conditionsRanked <- input$conditionRank
@@ -101,6 +108,22 @@ server <- function(input, output, session) {
     output$cond1Desc <- renderText({ gambleStates$conditionsRanked[1] })
     output$cond2Desc <- renderText({ gambleStates$conditionsRanked[2] })
     output$cond3Desc <- renderText({ gambleStates$conditionsRanked[3] })
+    
+    userResponses$age <- input$age
+    userResponses$gender <- input$gender
+    
+    # Calculate remaining life expectancy and round to nearest year
+    if (input$gender %in% c("Male", "Female")) {
+      userResponses$lifeExpectancy <- round(
+        approx(lifeExpectancyTable$Age, lifeExpectancyTable[[input$gender]], xout = input$age)$y
+      )
+    } else {
+      # If gender is "Other", use the average of Male and Female
+      avgLifeExpectancy <- rowMeans(cbind(lifeExpectancyTable$Male, lifeExpectancyTable$Female))
+      userResponses$lifeExpectancy <- round(
+        approx(lifeExpectancyTable$Age, avgLifeExpectancy, xout = input$age)$y
+      )
+    }
     
     # JavaScript to scroll to the main panel
     runjs('document.getElementById("gambleTabs").scrollIntoView();')
@@ -146,12 +169,19 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$cond3Choice2, {
-    # Show results modal with just the condition names
+    valueCondition1 <- 100 - gambleStates$cond1
+    valueCondition2 <- 100 - gambleStates$cond2
+    valueCondition3 <- 100 - gambleStates$cond3
+    
     showModal(modalDialog(
-      title = "Results",
-      paste("Condition 1:", simpleConditionName(gambleStates$conditionsRanked[1]), "- Final Chance of Dying:", gambleStates$cond1, "%"),
-      paste("Condition 2:", simpleConditionName(gambleStates$conditionsRanked[2]), "- Final Chance of Dying:", gambleStates$cond2, "%"),
-      paste("Condition 3:", simpleConditionName(gambleStates$conditionsRanked[3]), "- Final Chance of Dying:", gambleStates$cond3, "%"),
+      title = "Your Results",
+      paste("Your choices imply that for Condition 1 (", simpleConditionName(gambleStates$conditionsRanked[1]), 
+            "), you value the quality of life of a year living under this condition at", valueCondition1, 
+            "% of a year living healthily with diabetes."),
+      paste("For Condition 2 (", simpleConditionName(gambleStates$conditionsRanked[2]), 
+            "), that is", valueCondition2, "%."),
+      paste("For Condition 3 (", simpleConditionName(gambleStates$conditionsRanked[3]), 
+            "), it is", valueCondition3, "%."),
       size = "l"
     ))
   })
@@ -179,7 +209,7 @@ server <- function(input, output, session) {
       plot_ly(df, labels = ~labels, values = ~values, type = 'pie',
               marker = list(colors = c('#ABEBC6', '#E74C3C')),
               hoverinfo = 'label+percent', textinfo = 'label+percent') %>%
-        layout(title = "Chance of Death from Cure")
+        layout(title = "Chance of Death from Treatment or Cure")
     })
   }
 }
