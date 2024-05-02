@@ -2,6 +2,7 @@ library(plotly)
 library(shinyWidgets)
 library(sortable)
 library(shinyjs)
+library(DT)
 
 # UI definition
 ui <- fluidPage(
@@ -16,7 +17,6 @@ ui <- fluidPage(
     "))
   ),
   titlePanel("Health Condition Interview"),
-  # Replace sidebarLayout with fluidRow for a single column layout
   fluidRow(
     column(12,
            numericInput("age", "Your Age", value = 25, min = 18, max = 80),
@@ -83,8 +83,41 @@ ui <- fluidPage(
                       )
              ),
              tabPanel("Interview 3 Time Trade Off",
-                      h4("Placeholder for Time Trade Off Content")
-             )
+                      tabsetPanel(
+                        id = "ttoTabs",
+                        tabPanel("Condition 1 TTO",
+                                 h4("Time Trade Off for Condition 1"),
+                                 br(),
+                                 actionButton("cond1Opt1", "I would rather live a shorter perfectly healthy life"),
+                                 actionButton("cond1Opt2", "I am indifferent"),
+                                 actionButton("cond1Opt3", "I would rather live a longer life and suffer with the condition"),
+                                 br(),
+                                 plotlyOutput("cond1BarChart")
+                        ),
+                        tabPanel("Condition 2 TTO",
+                                 h4("Time Trade Off for Condition 2"),
+                                 br(),
+                                 actionButton("cond2Opt1", "I would rather live a shorter perfectly healthy life"),
+                                 actionButton("cond2Opt2", "I am indifferent"),
+                                 actionButton("cond2Opt3", "I would rather live a longer life and suffer with the condition"),
+                                 br(),
+                                 plotlyOutput("cond2BarChart")
+                        ),
+                        tabPanel("Condition 3 TTO",
+                                 h4("Time Trade Off for Condition 3"),
+                                 br(),
+                                 actionButton("cond3Opt1", "I would rather live a shorter perfectly healthy life"),
+                                 actionButton("cond3Opt2", "I am indifferent"),
+                                 actionButton("cond3Opt3", "I would rather live a longer life and suffer with the condition"),
+                                 br(),
+                                 plotlyOutput("cond3BarChart")
+                        )
+                      )
+             ),
+             tabPanel("Interview Results",
+                      h4("Results from All Interviews"),
+                      DTOutput("resultsTable")  
+                     )
            )
     )
   )
@@ -92,12 +125,22 @@ ui <- fluidPage(
 
 # Server logic
 server <- function(input, output, session) {
+  # Reactive data frame to store interview results
+  results <- reactiveValues(df = NULL)
+  
   # Initial rendering of the explanation text
   output$gambleExplanation <- renderText({
     "Welcome to the Health Condition Interview. Please click 'Start Interview' to begin."
   })
   
   observeEvent(input$start, {
+    conditionNames <- sapply(strsplit(input$conditionRank, ": "), `[`, 1)
+    results$df <- data.frame(
+      Condition = conditionNames,
+      VAS = rep(100, length(conditionNames)),
+      StandardGamble = rep(100, length(conditionNames)),
+      TimeTradeOff = rep(100, length(conditionNames))
+    )
     updateTabsetPanel(session, "mainTabs", selected = "Interview 1 Visual Acuity Scale")
     runjs('document.getElementById("mainTabs").scrollIntoView();')
   })
@@ -119,7 +162,6 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$submitVAS, {
-    # Check if the slider values are in the correct order according to the ranking
     if (input$slider1 < input$slider2 || input$slider2 < input$slider3) {
       showModal(modalDialog(
         title = "Input Error",
@@ -128,18 +170,31 @@ server <- function(input, output, session) {
         footer = modalButton("Ok")
       ))
     } else {
-      # Move to the Standard Gamble tab
       updateTabsetPanel(session, "mainTabs", selected = "Interview 2 Standard Gamble")
-      
-      # Display a summary of their Visual Acuity Scale input
       showModal(modalDialog(
         title = "Summary of your Visual Acuity Scale Input",
-        paste("You rated:",
-              "\n- ", strsplit(input$conditionRank[1], split=":")[[1]][1], ": ", input$slider1, "%",
-              "\n- ", strsplit(input$conditionRank[2], split=":")[[1]][1], ": ", input$slider2, "%",
-              "\n- ", strsplit(input$conditionRank[3], split=":")[[1]][1], ": ", input$slider3, "%"),
+        paste("Your choices imply that for Condition 1 (", simpleConditionName(gambleStates$conditionsRanked[1]), 
+              "), you perceive the quality of life to be", input$slider1, 
+              "% of a year living healthily with well controlled diabetes."),
+        paste("For Condition 2 (", simpleConditionName(gambleStates$conditionsRanked[2]), 
+              "), that is", input$slider2, "%."),
+        paste("For Condition 3 (", simpleConditionName(gambleStates$conditionsRanked[3]), 
+              "), it is", input$slider3, "%."),
         footer = modalButton("Proceed to Standard Gamble")
       ))
+      for (i in 1:3) {
+        results$df[i, "VAS"] <- input[[paste0("slider", i)]]
+      }
+      output$resultsTable <- renderDT({
+        req(results$df)  # Ensure the data frame is initialized
+        datatable(results$df, 
+                  options = list(
+                    pageLength = 5,
+                    searching = FALSE,  # Disable the search box
+                    lengthChange = FALSE  # Disable the dropdown for page length
+                  ), 
+                  editable = TRUE)
+      })
     }
   })
   
@@ -176,18 +231,23 @@ server <- function(input, output, session) {
     userResponses$age <- input$age
     userResponses$gender <- input$gender
     
-    # Calculate remaining life expectancy and round to nearest year
+    # Calculate life expectancy based on the user's input
     if (input$gender %in% c("Male", "Female")) {
       userResponses$lifeExpectancy <- round(
         approx(lifeExpectancyTable$Age, lifeExpectancyTable[[input$gender]], xout = input$age)$y
       )
-    } else {
-      # If gender is "Other", use the average of Male and Female
+    } else {  # Use the average if gender is 'Other' or not specified
       avgLifeExpectancy <- rowMeans(cbind(lifeExpectancyTable$Male, lifeExpectancyTable$Female))
       userResponses$lifeExpectancy <- round(
         approx(lifeExpectancyTable$Age, avgLifeExpectancy, xout = input$age)$y
       )
     }
+    
+    # Set initial values for the TTO based on half life expectancy, rounding up
+    totalYears <- userResponses$lifeExpectancy
+    healthyYears <- ceiling(totalYears / 2)  # Start with half healthy, rounded up if .5
+    lostYears <- totalYears - healthyYears  # The rest is lost
+    
     
     # JavaScript to scroll to the main panel
     runjs('document.getElementById("gambleTabs").scrollIntoView();')
@@ -241,6 +301,11 @@ server <- function(input, output, session) {
     valueCondition2 <- 100 - gambleStates$cond2
     valueCondition3 <- 100 - gambleStates$cond3
     
+    results$df[1, "StandardGamble"] <- 100 - gambleStates$cond1  # Assume gambleStates$cond1 holds the risk % for condition 1
+    results$df[2, "StandardGamble"] <- 100 - gambleStates$cond2  # Similar for condition 2
+    results$df[3, "StandardGamble"] <- 100 - gambleStates$cond3  # Similar for condition 3
+    
+    
     # Finally, display the results in a modal dialog
     showModal(modalDialog(
       title = "Your Results from Standard Gamble",
@@ -255,6 +320,7 @@ server <- function(input, output, session) {
     ))
   })
   
+ 
   # Helper function to extract simple condition names
   simpleConditionName <- function(fullDescription) {
     sapply(strsplit(fullDescription, ": "), `[`, 1)
@@ -281,7 +347,159 @@ server <- function(input, output, session) {
         layout(title = "Chance of Death from Treatment or Cure")
     })
   }
+  
+  # Initialize reactive values to store TTO calculations
+  gambleStatesTTO <- reactiveValues(
+    healthyYears = list(cond1 = NULL, cond2 = NULL, cond3 = NULL),
+    lostYears = list(cond1 = NULL, cond2 = NULL, cond3 = NULL)
+  )
+  
+  showTTOResults <- function() {
+    # Extract the percentages of healthy years based on the total life expectancy
+    percentages <- sapply(names(gambleStatesTTO$healthyYears), function(conditionId) {
+      100 * gambleStatesTTO$healthyYears[[conditionId]] / userResponses$lifeExpectancy
+    })
+    results$df[,"TimeTradeOff"]<-percentages
+    updateTabsetPanel(session, "mainTabs", selected = "Interview Results")
+    
+    # Create the results text, using the simpleConditionName function for clarity
+    resultText <- paste(sapply(seq_along(percentages), function(i) {
+      paste("Your choices imply that for", simpleConditionName(gambleStates$conditionsRanked[i]), 
+            "you value the quality of life of a year living under this condition at", sprintf("%.2f%%", percentages[[i]]),
+            "of a year living healthily with diabetes.")
+    }), collapse = "\n")
+    
+    # Show the modal with the formatted results
+    showModal(modalDialog(
+      title = "Results from Time Trade Off",
+      resultText,
+      footer = modalButton("Close")
+    ))
+  }
+  
+  
+  # Function to handle TTO responses and navigate between tabs
+  handleTTOChoice <- function(conditionId, option) {
+    if (is.na(gambleStatesTTO$healthyYears[[conditionId]])) {
+      gambleStatesTTO$healthyYears[[conditionId]] <- userResponses$lifeExpectancy / 2
+      gambleStatesTTO$lostYears[[conditionId]] <- userResponses$lifeExpectancy - gambleStatesTTO$healthyYears[[conditionId]]
+    }
+    
+    switch(option,
+           "shorter" = {
+             if (gambleStatesTTO$healthyYears[[conditionId]] > 0) {
+               gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]] - 1
+             }
+           },
+           "indifferent" = {
+             # Automatically switch to the next TTO tab
+             nextTabId <- getNextTTO(conditionId)
+             if (!is.null(nextTabId)) {
+               updateTabsetPanel(session, "ttoTabs", selected = nextTabId)
+             }
+           },
+           "longer" = {
+             gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]] + 1
+           }
+    )
+    gambleStatesTTO$lostYears[[conditionId]] <- userResponses$lifeExpectancy - gambleStatesTTO$healthyYears[[conditionId]]
+    renderBarChart(conditionId)
+    # Show results when "I am indifferent" is selected for the last condition
+    if (conditionId == "cond3" && option == "indifferent") {
+      showTTOResults()
+    }
+  }
+  
+  
+  # Listen for changes in the TTO tab selection to render the appropriate bar chart
+  observe({
+    req(input$ttoTabs)  # Require the ttoTabs input to initialize
+    # Depending on the currently active TTO tab, render the respective bar chart
+    if (input$ttoTabs == "Condition 1 TTO") {
+      renderBarChart("cond1")
+    } else if (input$ttoTabs == "Condition 2 TTO") {
+      renderBarChart("cond2")
+    } else if (input$ttoTabs == "Condition 3 TTO") {
+      renderBarChart("cond3")
+    }
+  })
+  
+  # Define a helper function to determine the next TTO tab
+  getNextTTO <- function(currentConditionId) {
+    conditions <- c("cond1", "cond2", "cond3")
+    currentIndex <- match(currentConditionId, conditions)
+    if (!is.na(currentIndex) && currentIndex < length(conditions)) {
+      return(paste0("Condition ", currentIndex + 1, " TTO"))
+    }
+    return(NULL)  # No next tab, perhaps handle the end of the survey
+  }
+  
+  # Observers for each "I am indifferent" button
+  lapply(c("cond1", "cond2", "cond3"), function(conditionId) {
+    observeEvent(input[[paste0(conditionId, "Opt1")]], {
+      handleTTOChoice(conditionId, "shorter")
+    })
+    observeEvent(input[[paste0(conditionId, "Opt2")]], {
+      handleTTOChoice(conditionId, "indifferent")
+      if (conditionId == "cond3") {  # Check if it is the last condition
+        showTTOResults()  # Call function to show results
+      }
+    })
+    observeEvent(input[[paste0(conditionId, "Opt3")]], {
+      handleTTOChoice(conditionId, "longer")
+    })
+  })
+  
+  # Initialize the TTO states reactively
+  observeEvent(input$start, {
+    # Example initialization, ensuring there's always a value for the TTO calculations
+    initialYears <- round(userResponses$lifeExpectancy / 2)
+    gambleStatesTTO$healthyYears <- list(cond1 = initialYears, cond2 = initialYears, cond3 = initialYears)
+    gambleStatesTTO$lostYears <- list(cond1 = userResponses$lifeExpectancy - initialYears,
+                                      cond2 = userResponses$lifeExpectancy - initialYears,
+                                      cond3 = userResponses$lifeExpectancy - initialYears)
+  })
+  
+  # Rendering bar charts for each condition
+  renderBarChart <- function(conditionId) {
+    output[[paste0(conditionId, "BarChart")]] <- renderPlotly({
+      req(gambleStatesTTO$healthyYears[[conditionId]], gambleStatesTTO$lostYears[[conditionId]])
+      
+      data <- data.frame(
+        Category = "Total Life Expectancy",
+        Years = c(gambleStatesTTO$healthyYears[[conditionId]], gambleStatesTTO$lostYears[[conditionId]]),
+        Type = c("Healthy Years", "Years Lost"),
+        Colors = c('#ABEBC6', '#E74C3C')
+      )
+      
+      plot_ly(data, x = ~Years, y = ~Category, type = 'bar', orientation = 'h',
+              color = ~Type, colors = ~Colors, text = ~paste0(Years, " years"), textposition = 'auto',
+              height = 250) %>%  # Specify height here
+        layout(
+          title = "Life Expectancy Distribution",
+          barmode = 'stack',
+          xaxis = list(title = "Years"),
+          yaxis = list(title = "", showticklabels = FALSE),
+          margin = list(l = 50, r = 50, t = 50, b = 50),  # Reduced margins
+          hovermode = 'closest'
+        )
+    })
+  }
+  
+  
+  
+  # Ensure charts are rendered when the TTO tab is shown
+  observeEvent(input$ttoTabs, {
+    if (input$ttoTabs == "Condition 1 TTO") {
+      renderBarChart("cond1")
+    } else if (input$ttoTabs == "Condition 2 TTO") {
+      renderBarChart("cond2")
+    } else if (input$ttoTabs == "Condition 3 TTO") {
+      renderBarChart("cond3")
+    }
+  }, ignoreInit = TRUE)
 }
+
 
 # Run the application
 shinyApp(ui, server)
