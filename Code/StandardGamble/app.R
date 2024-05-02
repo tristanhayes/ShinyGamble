@@ -16,17 +16,25 @@ ui <- fluidPage(
       }
     "))
   ),
-  titlePanel("Health Condition Interview"),
+  titlePanel("rShiny Gambler: Simulated Quality Adjusted Life Years Interviews"),
   fluidRow(
     column(12,
-           numericInput("age", "Your Age", value = 25, min = 18, max = 80),
-           selectInput("gender", "Your Gender", choices = c("Male", "Female", "Other or Prefer Not to Answer")),
-           rank_list(
-             text = "Imagine you have well controlled diabetes. You take insulin and check your blood sugar regularly, but otherwise lead a life free of complications. Now we want to see how you would compare this quality of life with that of life living with three complications related to diabetes. Rank the conditions with worst quality of life at the top (the closest to dying) and best quality of life (perfect health with controlled diabetes) at the bottom.",
-             labels = c("Diabetic Neuropathy: Complication of diabetes that results in nerve pain. Most commonly, this causes a burning and stinging sensation in your hands and feet. This may eventually progress to the point where you can’t feel things well with your fingers or more commonly your feet. Loss of sensation in your feet can lead to diabetic foot infections from minor injuries you don’t feel.",
-                        "Diabetic Foot Infection: A serious complication of diabetes, often stemming from neuropathy or peripheral arterial disease. It begins with seemingly benign sores or blisters on the feet that, without the usual pain to signal a problem due to neuropathy, can deteriorate unnoticed. Poor blood flow complicates healing, risking infection that can spread, leading to severe consequences without prompt treatment.",
-                        "Diabetic Retinopathy: A diabetes complication that affects the eyes and is caused by damage to the blood vessels of the light-sensitive tissue at the back of the eye (retina). Initially, diabetic retinopathy may cause no symptoms or only mild vision problems. However, it can lead to blindness. The condition can develop in anyone who has type 1 or type 2 diabetes, especially if the diabetes is poorly controlled."),
-             input_id = "conditionRank"
+           div(id = "inputSection",  # Enclose inputs and ranking in a div with an ID
+               tags$p("In Pharmacoeconomics we use a series of interviews to evaluate the quality of life under different health conditions. This interactive rShiny interview is designed to introduce to you the interview methods used to generate utilities such as Quality Adjusted Life Years. Here you will be walked through a series of three interviews, Visual Acuity Scale, Standard Gamble and Time Trade Off. Feel free to enter any age and gender you would like. We simply ask to create realistic life expectancy value for one of the later interviews. We would appreciate it if you would take a pre-survey before starting. There will be a post-knowledge survey also."),
+               tags$br(),  # Adds a line break for better spacing
+               tags$a(href = "https://your-survey-link.com", "Complete our pre-knowledge survey", target = "_blank"),
+               tags$br(),  # Adds a line break for better spacing
+               tags$br(),  # Adds a line break for better spacing
+               numericInput("age", "Your Age", value = 25, min = 18, max = 80),
+               selectInput("gender", "Your Gender", choices = c("Male", "Female", "Other or Prefer Not to Answer")),
+               rank_list(
+                 text = "Imagine you have well controlled diabetes. You take insulin and check your blood sugar regularly, but otherwise lead a life free of complications. Now we want to see how you would compare this quality of life with that of life living with three complications related to diabetes. Rank the conditions with worst quality of life at the top (the closest to dying) and best quality of life (perfect health with controlled diabetes) at the bottom.",
+                 labels = c("Diabetic Neuropathy: Complication of diabetes that results in nerve pain. Most commonly, this causes a burning and stinging sensation in your hands and feet. This may eventually progress to the point where you can’t feel things well with your fingers or more commonly your feet. Loss of sensation in your feet can lead to diabetic foot infections from minor injuries you don’t feel.",
+                            "Diabetic Foot Infection: A serious complication of diabetes, often stemming from neuropathy or peripheral arterial disease. It begins with seemingly benign sores or blisters on the feet that, without the usual pain to signal a problem due to neuropathy, can deteriorate unnoticed. Poor blood flow complicates healing, risking infection that can spread, leading to severe consequences without prompt treatment.",
+                            "Diabetic Retinopathy: A diabetes complication that affects the eyes and is caused by damage to the blood vessels of the light-sensitive tissue at the back of the eye (retina). Initially, diabetic retinopathy may cause no symptoms or only mild vision problems. However, it can lead to blindness. The condition can develop in anyone who has type 1 or type 2 diabetes, especially if the diabetes is poorly controlled."),
+                 input_id = "conditionRank"
+               )             
+               
            ),
            actionButton("start", "Start Interview")
     ),
@@ -48,6 +56,9 @@ ui <- fluidPage(
                       actionButton("submitVAS", "Submit")
              ),
              tabPanel("Interview 2 Standard Gamble",
+                      h4("Standard Gamble"),
+                      textOutput("standardGambleIntro"),
+                      br(),
                       tabsetPanel(
                         id = "gambleTabs",
                         tabPanel("Condition 1", value = "cond1",
@@ -83,30 +94,36 @@ ui <- fluidPage(
                       )
              ),
              tabPanel("Interview 3 Time Trade Off",
+                      h4("Time Trade-Off"),
+                      textOutput("timeTradeOffIntro"),
+                      br(),
                       tabsetPanel(
                         id = "ttoTabs",
                         tabPanel("Condition 1 TTO",
-                                 h4("Time Trade Off for Condition 1"),
                                  br(),
-                                 actionButton("cond1Opt1", "I would rather live a shorter perfectly healthy life"),
+                                 textOutput("ttoCond1Desc"),  # Add description output
+                                 br(),
+                                 actionButton("cond1Opt1", "I would take a treatment to live a shorter but perfectly healthy life"),
                                  actionButton("cond1Opt2", "I am indifferent"),
                                  actionButton("cond1Opt3", "I would rather live a longer life and suffer with the condition"),
                                  br(),
                                  plotlyOutput("cond1BarChart")
                         ),
                         tabPanel("Condition 2 TTO",
-                                 h4("Time Trade Off for Condition 2"),
                                  br(),
-                                 actionButton("cond2Opt1", "I would rather live a shorter perfectly healthy life"),
+                                 textOutput("ttoCond2Desc"),  # Add description output
+                                 br(),
+                                 actionButton("cond2Opt1", "I would take a treatment to live a shorter but perfectly healthy life"),
                                  actionButton("cond2Opt2", "I am indifferent"),
                                  actionButton("cond2Opt3", "I would rather live a longer life and suffer with the condition"),
                                  br(),
                                  plotlyOutput("cond2BarChart")
                         ),
                         tabPanel("Condition 3 TTO",
-                                 h4("Time Trade Off for Condition 3"),
                                  br(),
-                                 actionButton("cond3Opt1", "I would rather live a shorter perfectly healthy life"),
+                                 textOutput("ttoCond3Desc"),  # Add description output
+                                 br(),
+                                 actionButton("cond3Opt1", "I would take a treatment to live a shorter but perfectly healthy life"),
                                  actionButton("cond3Opt2", "I am indifferent"),
                                  actionButton("cond3Opt3", "I would rather live a longer life and suffer with the condition"),
                                  br(),
@@ -128,12 +145,24 @@ server <- function(input, output, session) {
   # Reactive data frame to store interview results
   results <- reactiveValues(df = NULL)
   
+  output$standardGambleIntro <- renderText({
+    "In the Standard Gamble section, imagine you have an option to undergo a treatment that could either completely cure you or result in death. You need to decide how much risk of dying you are willing to take to be cured of the condition. The higher the risk you are willing to take tells us how you perceive the quality of life to be with that condition."
+  })
+  
+  output$timeTradeOffIntro <- renderText({
+    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition and give you perfect quality of life or you can choose not to take the medicine and live a longer life but suffer from the condition. Would you accept a shorter but healthier life over a longer life with the condition?"
+  })
+  
   # Initial rendering of the explanation text
   output$gambleExplanation <- renderText({
     "Welcome to the Health Condition Interview. Please click 'Start Interview' to begin."
   })
   
   observeEvent(input$start, {
+    # Update descriptions for each condition
+    output$ttoCond1Desc <- renderText({ gambleStates$conditionsRanked[1] })
+    output$ttoCond2Desc <- renderText({ gambleStates$conditionsRanked[2] })
+    output$ttoCond3Desc <- renderText({ gambleStates$conditionsRanked[3] })
     conditionNames <- sapply(strsplit(input$conditionRank, ": "), `[`, 1)
     results$df <- data.frame(
       Condition = conditionNames,
@@ -141,6 +170,7 @@ server <- function(input, output, session) {
       StandardGamble = rep(100, length(conditionNames)),
       TimeTradeOff = rep(100, length(conditionNames))
     )
+    hide("inputSection")  # Hide the div containing inputs and ranking
     updateTabsetPanel(session, "mainTabs", selected = "Interview 1 Visual Acuity Scale")
     runjs('document.getElementById("mainTabs").scrollIntoView();')
   })
@@ -162,10 +192,10 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$submitVAS, {
-    if (input$slider1 < input$slider2 || input$slider2 < input$slider3) {
+    if (input$slider1 > input$slider2 || input$slider2 > input$slider3) {
       showModal(modalDialog(
         title = "Input Error",
-        "In step 1, you ranked the three conditions from highest to lowest quality of life. You cannot give a lower ranked condition a higher quality of life percentage than the condition before it.",
+        "In step 1, you ranked the three conditions from lowest to lowest quality of life. You cannot give a lower ranked condition a higher quality of life percentage than the condition before it.",
         easyClose = TRUE,
         footer = modalButton("Ok")
       ))
@@ -392,10 +422,24 @@ server <- function(input, output, session) {
              }
            },
            "indifferent" = {
-             # Automatically switch to the next TTO tab
-             nextTabId <- getNextTTO(conditionId)
-             if (!is.null(nextTabId)) {
-               updateTabsetPanel(session, "ttoTabs", selected = nextTabId)
+             # Check if the current choice is logically consistent with the previous ones
+             if (conditionId == "cond2" && gambleStatesTTO$healthyYears[["cond1"]] > gambleStatesTTO$healthyYears[["cond2"]] ||
+                 conditionId == "cond3" && gambleStatesTTO$healthyYears[["cond2"]] > gambleStatesTTO$healthyYears[["cond3"]]) {
+               showModal(modalDialog(
+                 title = "Input Error",
+                 "You cannot assign a higher quality of life percentage to a condition ranked as having a lower quality of life. Please adjust your choices.",
+                 easyClose = TRUE,
+                 footer = modalButton("Ok")
+               ))
+             } else {
+               # Automatically switch to the next TTO tab
+               nextTabId <- getNextTTO(conditionId)
+               if (!is.null(nextTabId)) {
+                 updateTabsetPanel(session, "ttoTabs", selected = nextTabId)
+               }
+               if (conditionId == "cond3") {
+                 showTTOResults()
+               }
              }
            },
            "longer" = {
@@ -404,10 +448,6 @@ server <- function(input, output, session) {
     )
     gambleStatesTTO$lostYears[[conditionId]] <- userResponses$lifeExpectancy - gambleStatesTTO$healthyYears[[conditionId]]
     renderBarChart(conditionId)
-    # Show results when "I am indifferent" is selected for the last condition
-    if (conditionId == "cond3" && option == "indifferent") {
-      showTTOResults()
-    }
   }
   
   
@@ -463,24 +503,39 @@ server <- function(input, output, session) {
   # Rendering bar charts for each condition
   renderBarChart <- function(conditionId) {
     output[[paste0(conditionId, "BarChart")]] <- renderPlotly({
+      # Ensure the necessary data is available
       req(gambleStatesTTO$healthyYears[[conditionId]], gambleStatesTTO$lostYears[[conditionId]])
       
-      data <- data.frame(
-        Category = "Total Life Expectancy",
-        Years = c(gambleStatesTTO$healthyYears[[conditionId]], gambleStatesTTO$lostYears[[conditionId]]),
-        Type = c("Healthy Years", "Years Lost"),
-        Colors = c('#ABEBC6', '#E74C3C')
+      # Data for the full life expectancy bar chart (to appear on top)
+      data2 <- data.frame(
+        Category = "Live With the Condition",
+        Years = userResponses$lifeExpectancy,
+        Type = "Full Life Expectancy",
+        Colors = '#3498DB'  # Blue for full life expectancy
       )
       
-      plot_ly(data, x = ~Years, y = ~Category, type = 'bar', orientation = 'h',
-              color = ~Type, colors = ~Colors, text = ~paste0(Years, " years"), textposition = 'auto',
-              height = 250) %>%  # Specify height here
+      # Data for the TTO bar chart
+      data1 <- data.frame(
+        Category = "Shorter but Better Quality of Life",
+        Years = c(gambleStatesTTO$healthyYears[[conditionId]], gambleStatesTTO$lostYears[[conditionId]]),
+        Type = c("Healthy Years", "Years Given Up"),
+        Colors = c('#2ECC71', '#FF5733')  # Green for healthy years, red for years given up
+      )
+      
+      # Combine data for both charts
+      data_combined <- rbind(data1, data2)
+      
+      # Create plot
+      plot_ly(data_combined, x = ~Years, y = ~Category, type = 'bar', orientation = 'h',
+              color = ~Type, colors = c('Healthy Years' = '#2ECC71', 'Years Given Up' = '#FF5733', 'Full Life Expectancy' = '#3498DB'),
+              text = ~paste0(Years, " years"), textposition = 'auto',
+              height = 400) %>%  # Adjusted height to better accommodate two charts
         layout(
-          title = "Life Expectancy Distribution",
+          title = "Which Would You Prefer",
           barmode = 'stack',
           xaxis = list(title = "Years"),
-          yaxis = list(title = "", showticklabels = FALSE),
-          margin = list(l = 50, r = 50, t = 50, b = 50),  # Reduced margins
+          yaxis = list(title = ""),
+          margin = list(l = 50, r = 50, t = 50, b = 50),
           hovermode = 'closest'
         )
     })
