@@ -20,13 +20,13 @@ ui <- fluidPage(
   fluidRow(
     column(12,
            div(id = "inputSection",  # Enclose inputs and ranking in a div with an ID
-               tags$p("In Pharmacoeconomics we use a series of interviews to evaluate the quality of life under different health conditions. This interactive rShiny interview is designed to introduce to you the interview methods used to generate utilities such as Quality Adjusted Life Years. Here you will be walked through a series of three interviews, Visual Acuity Scale, Standard Gamble and Time Trade Off. Feel free to enter any age and gender you would like. We simply ask to create realistic life expectancy value for one of the later interviews. We would appreciate it if you would take a pre-survey before starting. There will be a post-knowledge survey also."),
+               tags$p("In Pharmacoeconomics we use a series of interviews to evaluate the quality of life under different health conditions. This interactive rShiny interview is designed to introduce you to the interview methods used to generate utilities such as Quality Adjusted Life Years. Here you will be walked through a series of three interviews: Visual Acuity Scale, Standard Gamble, and Time Trade Off. Feel free to enter any age and gender you would like. We simply ask to create realistic life expectancy values for the last interview. This should only take 15 minutes. We would appreciate it if you would take a pre-survey before starting."),
                tags$br(),  # Adds a line break for better spacing
                tags$a(href = "https://your-survey-link.com", "Complete our pre-knowledge survey", target = "_blank"),
                tags$br(),  # Adds a line break for better spacing
                tags$br(),  # Adds a line break for better spacing
-               numericInput("age", "Your Age", value = 25, min = 18, max = 80),
-               selectInput("gender", "Your Gender", choices = c("Male", "Female", "Other or Prefer Not to Answer")),
+               numericInput("age", "Your Age", value = 50, min = 18, max = 80),
+               selectInput("gender", "Your Gender", choices = c( "Other or Prefer Not to Answer","Male", "Female")),
                rank_list(
                  text = "Imagine you have well controlled diabetes. You take insulin and check your blood sugar regularly, but otherwise lead a life free of complications. Now we want to see how you would compare this quality of life with that of life living with three complications related to diabetes. Rank the conditions with worst quality of life at the top (the closest to dying) and best quality of life (perfect health with controlled diabetes) at the bottom.",
                  labels = c("Diabetic Neuropathy: Complication of diabetes that results in nerve pain. Most commonly, this causes a burning and stinging sensation in your hands and feet. This may eventually progress to the point where you can’t feel things well with your fingers or more commonly your feet. Loss of sensation in your feet can lead to diabetic foot infections from minor injuries you don’t feel.",
@@ -150,7 +150,7 @@ server <- function(input, output, session) {
   })
   
   output$timeTradeOffIntro <- renderText({
-    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition and give you perfect quality of life or you can choose not to take the medicine and live a longer life but suffer from the condition. Would you accept a shorter but healthier life over a longer life with the condition?"
+    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition but will shorten your life or you can choose not to take the medicine and live a longer life but you must suffer from the condition. Would you accept a shorter but healthier life over a longer life with the condition?"
   })
   
   # Initial rendering of the explanation text
@@ -185,9 +185,9 @@ server <- function(input, output, session) {
     req(input$conditionRank)
     # Create sliders with labels based on the ranking
     fluidPage(
-      sliderInput("slider1", label = strsplit(input$conditionRank[1],split=":")[[1]][1], min = 0, max = 100, value = 100),
-      sliderInput("slider2", label = strsplit(input$conditionRank[2],split=":")[[1]][1], min = 0, max = 100, value = 100),
-      sliderInput("slider3", label = strsplit(input$conditionRank[3],split=":")[[1]][1], min = 0, max = 100, value = 100)
+      sliderInput("slider1", label = strsplit(input$conditionRank[1],split=":")[[1]][1], min = 0, max = 100, value = 50),
+      sliderInput("slider2", label = strsplit(input$conditionRank[2],split=":")[[1]][1], min = 0, max = 100, value = 50),
+      sliderInput("slider3", label = strsplit(input$conditionRank[3],split=":")[[1]][1], min = 0, max = 100, value = 50)
     )
   })
   
@@ -422,24 +422,19 @@ server <- function(input, output, session) {
              }
            },
            "indifferent" = {
-             # Check if the current choice is logically consistent with the previous ones
-             if (conditionId == "cond2" && gambleStatesTTO$healthyYears[["cond1"]] > gambleStatesTTO$healthyYears[["cond2"]] ||
-                 conditionId == "cond3" && gambleStatesTTO$healthyYears[["cond2"]] > gambleStatesTTO$healthyYears[["cond3"]]) {
-               showModal(modalDialog(
-                 title = "Input Error",
-                 "You cannot assign a higher quality of life percentage to a condition ranked as having a lower quality of life. Please adjust your choices.",
-                 easyClose = TRUE,
-                 footer = modalButton("Ok")
-               ))
-             } else {
-               # Automatically switch to the next TTO tab
-               nextTabId <- getNextTTO(conditionId)
-               if (!is.null(nextTabId)) {
-                 updateTabsetPanel(session, "ttoTabs", selected = nextTabId)
-               }
-               if (conditionId == "cond3") {
-                 showTTOResults()
-               }
+             # Set the next condition's starting healthy years to the current if indifferent is selected
+             if (conditionId == "cond1") {
+               gambleStatesTTO$healthyYears[["cond2"]] <- gambleStatesTTO$healthyYears[["cond1"]]
+             } else if (conditionId == "cond2") {
+               gambleStatesTTO$healthyYears[["cond3"]] <- gambleStatesTTO$healthyYears[["cond2"]]
+             }
+             # Automatically switch to the next TTO tab
+             nextTabId <- getNextTTO(conditionId)
+             if (!is.null(nextTabId)) {
+               updateTabsetPanel(session, "ttoTabs", selected = nextTabId)
+             }
+             if (conditionId == "cond3") {
+               showTTOResults()
              }
            },
            "longer" = {
@@ -449,6 +444,7 @@ server <- function(input, output, session) {
     gambleStatesTTO$lostYears[[conditionId]] <- userResponses$lifeExpectancy - gambleStatesTTO$healthyYears[[conditionId]]
     renderBarChart(conditionId)
   }
+  
   
   
   # Listen for changes in the TTO tab selection to render the appropriate bar chart
