@@ -21,8 +21,11 @@ ui <- fluidPage(
     column(12,
            div(id = "inputSection",  # Enclose inputs and ranking in a div with an ID
                tags$p("In Pharmacoeconomics we use a series of interviews to evaluate the quality of life under different health conditions. This interactive rShiny interview is designed to introduce you to the interview methods used to generate utilities such as Quality Adjusted Life Years. Here you will be walked through a series of three interviews: Visual Acuity Scale, Standard Gamble, and Time Trade Off. Feel free to enter any age and gender you would like. We simply ask to create realistic life expectancy values for the last interview. This should only take 15 minutes. We would appreciate it if you would take a pre-survey before starting."),
-               tags$br(),  # Adds a line break for better spacing
                tags$a(href = "https://your-survey-link.com", "Complete our pre-knowledge survey", target = "_blank"),
+               tags$br(),  # Adds a line break for better spacing
+               tags$br(),  # Adds a line break for better spacing
+               tags$p("Acknowledgement: This is a remake in rShiny of the excellent original Automated Tool for Health Utility Assessments: The Gambler II by Adejare and Eckman."),
+               tags$a(href = "https://pubmed.ncbi.nlm.nih.gov/32215320/", "Pubmed Link to the Original", target = "_blank"),
                tags$br(),  # Adds a line break for better spacing
                tags$br(),  # Adds a line break for better spacing
                numericInput("age", "Your Age", value = 50, min = 18, max = 80),
@@ -150,7 +153,7 @@ server <- function(input, output, session) {
   })
   
   output$timeTradeOffIntro <- renderText({
-    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition but will shorten your life or you can choose not to take the medicine and live a longer life but you must suffer from the condition. Would you accept a shorter but healthier life over a longer life with the condition?"
+    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition but will shorten your life. Alternatively you can choose not to take the medicine and live a longer life but you must suffer from the condition. Would you accept a shorter but fuller life over a longer life with the condition?"
   })
   
   # Initial rendering of the explanation text
@@ -217,14 +220,18 @@ server <- function(input, output, session) {
       }
       output$resultsTable <- renderDT({
         req(results$df)  # Ensure the data frame is initialized
+        
+        # Use formatRound to specify the decimal places for the columns
         datatable(results$df, 
                   options = list(
                     pageLength = 5,
                     searching = FALSE,  # Disable the search box
                     lengthChange = FALSE  # Disable the dropdown for page length
                   ), 
-                  editable = TRUE)
+                  editable = TRUE) %>%
+          formatRound(columns = c('VAS', 'StandardGamble', 'TimeTradeOff'), digits = 1)
       })
+      
     }
   })
   
