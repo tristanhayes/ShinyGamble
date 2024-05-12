@@ -424,7 +424,15 @@ server <- function(input, output, session) {
     
     switch(option,
            "shorter" = {
-             if (gambleStatesTTO$healthyYears[[conditionId]] > 0) {
+             # Prevent reducing the healthy years if it would result in inconsistency
+             if ((conditionId == "cond2" && gambleStatesTTO$healthyYears[["cond2"]] <= gambleStatesTTO$healthyYears[["cond1"]]) ||
+                 (conditionId == "cond3" && gambleStatesTTO$healthyYears[["cond3"]] <= gambleStatesTTO$healthyYears[["cond2"]])) {
+               showModal(modalDialog(
+                 title = "Oops",
+                 paste("Sorry, since you ranked this condition higher quality of life than the prior condition, you cannot choose to shorten your life any further. You can only accept the same amount of time or a longer life."),
+                 footer = modalButton("Close")
+               ))
+             } else {
                gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]] - 1
              }
            },
@@ -432,8 +440,10 @@ server <- function(input, output, session) {
              # Set the next condition's starting healthy years to the current if indifferent is selected
              if (conditionId == "cond1") {
                gambleStatesTTO$healthyYears[["cond2"]] <- gambleStatesTTO$healthyYears[["cond1"]]
+               gambleStatesTTO$lostYears[["cond2"]] <- gambleStatesTTO$lostYears[["cond1"]]
              } else if (conditionId == "cond2") {
                gambleStatesTTO$healthyYears[["cond3"]] <- gambleStatesTTO$healthyYears[["cond2"]]
+               gambleStatesTTO$lostYears[["cond3"]] <- gambleStatesTTO$lostYears[["cond2"]]
              }
              # Automatically switch to the next TTO tab
              nextTabId <- getNextTTO(conditionId)
