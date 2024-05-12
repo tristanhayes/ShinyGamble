@@ -20,9 +20,8 @@ ui <- fluidPage(
   fluidRow(
     column(12,
            div(id = "inputSection",  # Enclose inputs and ranking in a div with an ID
-               tags$p("In Pharmacoeconomics we use a series of interviews to evaluate the quality of life under different health conditions. This interactive rShiny interview is designed to introduce you to the interview methods used to generate utilities such as Quality Adjusted Life Years. Here you will be walked through a series of three interviews: Visual Acuity Scale, Standard Gamble, and Time Trade Off. Feel free to enter any age and gender you would like. We simply ask to create realistic life expectancy values for the last interview. This should only take 15 minutes. We would appreciate it if you would take a pre-survey before starting."),
-               tags$a(href = "https://your-survey-link.com", "Complete our pre-knowledge survey", target = "_blank"),
-               tags$br(),  # Adds a line break for better spacing
+               h3("Welcome to the rShiny Gambler!"),
+               tags$p("This interactive tool simulates interviews used in pharmacoeconomics to assess health utilities such as Quality Adjusted Life Years (QALYs). You will be asked how you feel that different health conditions affect quality of life. This is designed as an educational tool to introduce three common methods: Visual Acuity Scale, Standard Gamble, and Time Trade Off. Feel free to enter any age and gender you would like. We simply ask these to create realistic life expectancy values for the last interview. This should only take 15 minutes. We would appreciate it if at the end you would take a short survey to let us know what you think."),
                tags$br(),  # Adds a line break for better spacing
                tags$p("Acknowledgement: This is a remake in rShiny of the excellent original Automated Tool for Health Utility Assessments: The Gambler II by Adejare and Eckman."),
                tags$a(href = "https://pubmed.ncbi.nlm.nih.gov/32215320/", "Pubmed Link to the Original", target = "_blank"),
@@ -135,7 +134,13 @@ ui <- fluidPage(
                       )
              ),
              tabPanel("Interview Results",
-                      h4("Results from All Interviews"),
+                      h4("Survey: Please Tell Us What You Think!"),
+                      tags$br(),
+                      p("See below a link to a brief <10 minute survey. If you would like, you can copy your results table below and submit them with the survey."),
+                      tags$br(),                      
+                      tags$a(href = "https://uthsc.co1.qualtrics.com/jfe/form/SV_cI9hJmBBbkENrtY", "Complete our pre-knowledge survey", target = "_blank"),
+                      tags$br(),  # Adds a line break for better spacing
+                      h4("Your Results from All Three Interview Methods"),
                       DTOutput("resultsTable")  
                      )
            )
@@ -149,11 +154,11 @@ server <- function(input, output, session) {
   results <- reactiveValues(df = NULL)
   
   output$standardGambleIntro <- renderText({
-    "In the Standard Gamble section, imagine you have an option to undergo a treatment that could either completely cure you or result in death. You need to decide how much risk of dying you are willing to take to be cured of the condition. The higher the risk you are willing to take tells us how you perceive the quality of life to be with that condition."
+    "In the Standard Gamble section, imagine you have an option to undergo a treatment that could either completely cure you or result in death. You need to decide how much risk of dying you are willing to take to be cured of the condition. The higher the risk you are willing to take tells us how you perceive the quality of life to be with that condition. Here an interviewer will ask you a series of times of whether you would take the risk of the cure or prefer to live with the condition and will adjust the risk each time. In the starting scenario, the treatment offered has a 50% chance of death. If you think that condition is very bad, you would choose a shorter life. However, if you think the quality of life under that condition is not too bad, you might prefer living under that condition than risking death. You can go back and forth until you are indifferent between Taking the Gamble or living with the condition."
   })
   
   output$timeTradeOffIntro <- renderText({
-    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition but will shorten your life. Alternatively you can choose not to take the medicine and live a longer life but you must suffer from the condition. Would you accept a shorter but fuller life over a longer life with the condition?"
+    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition but will shorten your life. Alternatively you can choose not to take the medicine and live a longer life but you must suffer from the condition. Would you accept a shorter but fuller life over a longer life with the condition? Again, as with the Standard Gamble, the interviewer will keep asking until you mark that you are indifferent between the choices."
   })
   
   # Initial rendering of the explanation text
