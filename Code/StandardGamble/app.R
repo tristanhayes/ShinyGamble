@@ -158,7 +158,7 @@ server <- function(input, output, session) {
   })
   
   output$timeTradeOffIntro <- renderText({
-    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition but will shorten your life. Alternatively you can choose not to take the medicine and live a longer life but you must suffer from the condition. Would you accept a shorter but fuller life over a longer life with the condition? Again, as with the Standard Gamble, the interviewer will keep asking until you mark that you are indifferent between the choices."
+    "In the Time Trade-Off section, imagine that there is a treatment which can completely alleviate your condition but will shorten your life. Alternatively you can choose not to take the medicine and live a longer life but you must suffer from the condition. Would you accept a shorter but fuller life over a longer life with the condition? Again, as with the Standard Gamble, the interviewer will keep asking until you mark that you are indifferent between the choices. Note: the system will not let you choose a shorter life than a prior, worse ranked condition."
   })
   
   # Initial rendering of the explanation text
@@ -432,11 +432,7 @@ server <- function(input, output, session) {
              # Prevent reducing the healthy years if it would result in inconsistency
              if ((conditionId == "cond2" && gambleStatesTTO$healthyYears[["cond2"]] <= gambleStatesTTO$healthyYears[["cond1"]]) ||
                  (conditionId == "cond3" && gambleStatesTTO$healthyYears[["cond3"]] <= gambleStatesTTO$healthyYears[["cond2"]])) {
-               showModal(modalDialog(
-                 title = "Oops",
-                 paste("Sorry, since you ranked this condition higher quality of life than the prior condition, you cannot choose to shorten your life any further. You can only accept the same amount of time or a longer life."),
-                 footer = modalButton("Close")
-               ))
+               gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]]
              } else {
                gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]] - 1
              }
@@ -460,7 +456,11 @@ server <- function(input, output, session) {
              }
            },
            "longer" = {
+             if ((gambleStatesTTO$healthyYears[[conditionId]] + 1)>=userResponses$lifeExpectancy){
+               gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]]
+             } else {
              gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]] + 1
+             }
            }
     )
     gambleStatesTTO$lostYears[[conditionId]] <- userResponses$lifeExpectancy - gambleStatesTTO$healthyYears[[conditionId]]
