@@ -134,11 +134,11 @@ ui <- fluidPage(
                       )
              ),
              tabPanel("Interview Results",
-                      h4("Survey: Please Tell Us What You Think!"),
+                      h3("Survey: Please Tell Us What You Think!"),
                       tags$br(),
                       p("See below a link to a brief <10 minute survey. If you would like, you can copy your results table below and submit them with the survey."),
                       tags$br(),                      
-                      tags$a(href = "https://uthsc.co1.qualtrics.com/jfe/form/SV_cI9hJmBBbkENrtY", "Complete our pre-knowledge survey", target = "_blank"),
+                      h2(tags$a(href = "https://uthsc.co1.qualtrics.com/jfe/form/SV_cI9hJmBBbkENrtY", "Complete Our Survey", target = "_blank")),
                       tags$br(),  # Adds a line break for better spacing
                       h4("Your Results from All Three Interview Methods"),
                       DTOutput("resultsTable")  
