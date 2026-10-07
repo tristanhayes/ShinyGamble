@@ -1,0 +1,13 @@
+# shinyapps.io / Posit Connect deployment records
+rsconnect/
+
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

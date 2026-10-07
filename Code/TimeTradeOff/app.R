@@ -103,9 +103,14 @@ server <- function(input, output, session) {
       )
     }
     
-    # Set initial values for the TTO based on full life expectancy
-    gambleStatesTTO$healthyYears$cond1 <- userResponses$lifeExpectancy
-    gambleStatesTTO$lostYears$cond1 <- 0
+    # Set initial values for the TTO based on half life expectancy, rounding up
+    totalYears <- userResponses$lifeExpectancy
+    healthyYears <- ceiling(totalYears / 2)  # Start with half healthy, rounded up if .5
+    lostYears <- totalYears - healthyYears  # The rest is lost
+    
+    gambleStatesTTO$healthyYears$cond1 <- healthyYears
+    gambleStatesTTO$lostYears$cond1 <- lostYears
+    
     disable("cond2")
     disable("cond3")
     updateTabsetPanel(session, "gambleTabs", selected = "cond1")
@@ -153,11 +158,11 @@ server <- function(input, output, session) {
   handleTTOChoice <- function(conditionId, choice) {
     currentHealthyYears <- gambleStatesTTO$healthyYears[[conditionId]]
     if (choice == "shorter") {
-      # Reduce healthy years, increase lost years
-      newHealthyYears <- max(0, currentHealthyYears - 1)
+      # Reduce healthy years, increase lost years, cannot go below 1 year of healthy life
+      newHealthyYears <- max(1, currentHealthyYears - 1)
     } else {  # "longer"
-      # Increase healthy years, reduce lost years
-      newHealthyYears <- min(userResponses$lifeExpectancy, currentHealthyYears + 1)
+      # Increase healthy years, reduce lost years, cannot exceed total life expectancy - 1 year
+      newHealthyYears <- min(userResponses$lifeExpectancy - 1, currentHealthyYears + 1)
     }
     gambleStatesTTO$healthyYears[[conditionId]] <- newHealthyYears
     gambleStatesTTO$lostYears[[conditionId]] <- userResponses$lifeExpectancy - newHealthyYears
@@ -211,4 +216,3 @@ server <- function(input, output, session) {
 
 # Run the application
 shinyApp(ui, server)
-

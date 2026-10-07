@@ -456,11 +456,10 @@ server <- function(input, output, session) {
              }
            },
            "longer" = {
-             if ((gambleStatesTTO$healthyYears[[conditionId]] + 1)>=userResponses$lifeExpectancy){
-               gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]]
-             } else {
-             gambleStatesTTO$healthyYears[[conditionId]] <- gambleStatesTTO$healthyYears[[conditionId]] + 1
-             }
+             gambleStatesTTO$healthyYears[[conditionId]] <- min(
+               userResponses$lifeExpectancy, 
+               gambleStatesTTO$healthyYears[[conditionId]] + 1
+             )
            }
     )
     gambleStatesTTO$lostYears[[conditionId]] <- userResponses$lifeExpectancy - gambleStatesTTO$healthyYears[[conditionId]]
